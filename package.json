@@ -8,12 +8,13 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint src test --ext .ts,.tsx",
     "prepare:core": "npm --prefix native/moonlight/MoonlightVegaCore run build:js",
-    "prebuild:debug": "npm run prepare:core",
+    "prebuild:debug": "npm --prefix native/moonlight/MoonlightVegaCore run build:debug",
     "build:debug": "react-native build-vega --build-type Debug",
-    "prebuild:release": "npm run prepare:core",
+    "prebuild:release": "npm --prefix native/moonlight/MoonlightVegaCore run build:release",
     "build:release": "react-native build-vega --build-type Release",
-    "build:native:debug": "npm --prefix native/moonlight/MoonlightVegaCore run build:js && npm --prefix native/moonlight/MoonlightVegaCore run build:native:debug",
-    "build:native:release": "npm --prefix native/moonlight/MoonlightVegaCore run build:js && npm --prefix native/moonlight/MoonlightVegaCore run build:native:release",
+    "build:native:debug": "npm --prefix native/moonlight/MoonlightVegaCore run build:debug",
+    "build:native:release": "npm --prefix native/moonlight/MoonlightVegaCore run build:release",
+    "smoke:serverinfo": "c++ -std=c++17 -Wall -Wextra -Werror native/moonlight/MoonlightVegaCore/kepler/core/ServerInfoClient.cpp native/moonlight/MoonlightVegaCore/test/ServerInfoSmoke.cpp -o /tmp/moonlight-vega-serverinfo-smoke && /tmp/moonlight-vega-serverinfo-smoke",
     "doctor": "vega project doctor"
   },
   "dependencies": {

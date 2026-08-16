@@ -364,12 +364,14 @@ ServerInfo ServerInfoClient::fetch(
     throw std::runtime_error("Sunshine returned a non-success GameStream response");
   }
 
+  const std::string gsVersion = extractTag(body, "gsversion");
+
   return ServerInfo{
       host,
       port,
       extractTag(body, "hostname"),
       extractTag(body, "appversion"),
-      extractTag(body, "gsversion"),
+      gsVersion.empty() ? extractTag(body, "gfeversion") : gsVersion,
       extractTag(body, "uniqueid"),
       extractTag(body, "state"),
       parseInt(extractTag(body, "pairstatus")) == 1,
@@ -378,4 +380,3 @@ ServerInfo ServerInfoClient::fetch(
 }
 
 }  // namespace moonlight::network
-
