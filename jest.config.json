@@ -1,0 +1,5 @@
+{
+  "preset": "react-native",
+  "modulePathIgnorePatterns": ["<rootDir>/native/", "<rootDir>/third_party/"]
+}
+

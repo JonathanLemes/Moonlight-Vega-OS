@@ -1,0 +1,10 @@
+node_modules/
+dist/
+build/
+buildinfo.json
+.cache/
+.DS_Store
+*.vpkg
+*.log
+coverage/
+

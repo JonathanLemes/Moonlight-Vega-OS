@@ -1,0 +1,61 @@
+import React, {useState} from 'react';
+import {Pressable, StyleSheet, Text} from 'react-native';
+
+interface FocusedButtonProps {
+  label: string;
+  disabled?: boolean;
+  onPress: () => void;
+}
+
+export const FocusedButton = ({
+  label,
+  disabled = false,
+  onPress,
+}: FocusedButtonProps) => {
+  const [focused, setFocused] = useState(false);
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      disabled={disabled}
+      focusable
+      hasTVPreferredFocus
+      onBlur={() => setFocused(false)}
+      onFocus={() => setFocused(true)}
+      onPress={onPress}
+      style={[
+        styles.button,
+        focused && styles.focused,
+        disabled && styles.disabled,
+      ]}>
+      <Text style={styles.label}>{label}</Text>
+    </Pressable>
+  );
+};
+
+const styles = StyleSheet.create({
+  button: {
+    minWidth: 220,
+    paddingHorizontal: 28,
+    paddingVertical: 16,
+    borderRadius: 8,
+    borderWidth: 3,
+    borderColor: '#2b4255',
+    backgroundColor: '#1769aa',
+    alignItems: 'center',
+  },
+  focused: {
+    borderColor: '#f4f7fa',
+    backgroundColor: '#2388d8',
+    transform: [{scale: 1.04}],
+  },
+  disabled: {
+    opacity: 0.45,
+  },
+  label: {
+    color: '#ffffff',
+    fontSize: 22,
+    fontWeight: '700',
+  },
+});
+

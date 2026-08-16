@@ -1,0 +1,8 @@
+{
+  "root": true,
+  "extends": "@react-native",
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["@typescript-eslint"],
+  "ignorePatterns": ["native/**/generated/**", "third_party/**"]
+}
+
