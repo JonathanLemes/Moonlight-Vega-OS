@@ -20,6 +20,12 @@ MoonlightVegaCoreSpec::~MoonlightVegaCoreSpec() = default;
 void MoonlightVegaCoreSpec::aggregateMethods(MethodAggregator<KeplerTurboModule>& methodAggregator) const noexcept {
   methodAggregator.addMethod("getCoreInfo", &MoonlightVegaCoreSpec::getCoreInfo);
   methodAggregator.addMethod("getServerInfo", &MoonlightVegaCoreSpec::getServerInfo);
+  methodAggregator.addMethod("pair", &MoonlightVegaCoreSpec::pair);
+  methodAggregator.addMethod("getApps", &MoonlightVegaCoreSpec::getApps);
+  methodAggregator.addMethod("setStreamEventHandler", &MoonlightVegaCoreSpec::setStreamEventHandler);
+  methodAggregator.addMethod("startStream", &MoonlightVegaCoreSpec::startStream);
+  methodAggregator.addMethod("stopStream", &MoonlightVegaCoreSpec::stopStream);
+  methodAggregator.addMethod("sendControllerState", &MoonlightVegaCoreSpec::sendControllerState);
 }
 
 } // namespace MoonlightVegaCoreTurboModule

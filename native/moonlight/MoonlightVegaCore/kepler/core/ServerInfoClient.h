@@ -13,6 +13,7 @@ struct ServerInfo {
   std::string gsVersion;
   std::string uniqueId;
   std::string state;
+  std::uint16_t httpsPort;
   bool paired;
   std::int32_t currentGame;
   double serverCodecModeSupport;
@@ -27,4 +28,3 @@ class ServerInfoClient {
 };
 
 }  // namespace moonlight::network
-

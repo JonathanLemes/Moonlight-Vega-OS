@@ -34,6 +34,7 @@ int main(int argc, char** argv) {
               << "state=" << info.state << '\n'
               << "appVersion=" << info.appVersion << '\n'
               << "gsVersion=" << info.gsVersion << '\n'
+              << "httpsPort=" << info.httpsPort << '\n'
               << "paired=" << (info.paired ? "true" : "false") << '\n'
               << "currentGame=" << info.currentGame << '\n'
               << "serverCodecModeSupport=" << info.serverCodecModeSupport << '\n';

@@ -4,12 +4,14 @@ import {Pressable, StyleSheet, Text} from 'react-native';
 interface FocusedButtonProps {
   label: string;
   disabled?: boolean;
+  preferredFocus?: boolean;
   onPress: () => void;
 }
 
 export const FocusedButton = ({
   label,
   disabled = false,
+  preferredFocus = false,
   onPress,
 }: FocusedButtonProps) => {
   const [focused, setFocused] = useState(false);
@@ -19,7 +21,7 @@ export const FocusedButton = ({
       accessibilityRole="button"
       disabled={disabled}
       focusable
-      hasTVPreferredFocus
+      hasTVPreferredFocus={preferredFocus}
       onBlur={() => setFocused(false)}
       onFocus={() => setFocused(true)}
       onPress={onPress}
@@ -58,4 +60,3 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
-

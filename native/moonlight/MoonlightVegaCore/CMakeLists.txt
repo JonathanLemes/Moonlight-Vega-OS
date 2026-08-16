@@ -49,13 +49,19 @@ add_subdirectory(
 )
 
 set(HEADERS
+  kepler/core/FragmentedMp4.h
+  kepler/core/GameStreamClient.h
   kepler/core/ServerInfoClient.h
+  kepler/core/StreamSession.h
   kepler/turbo-modules/generated/MoonlightVegaCoreSpec.h
   kepler/turbo-modules/MoonlightVegaCore.h
 )
 
 set(SOURCES
+  kepler/core/FragmentedMp4.cpp
+  kepler/core/GameStreamClient.cpp
   kepler/core/ServerInfoClient.cpp
+  kepler/core/StreamSession.cpp
   kepler/turbo-modules/generated/MoonlightVegaCoreSpec.cpp
   kepler/turbo-modules/MoonlightVegaCore.cpp
   kepler/AutoLinkInit.cpp
@@ -70,6 +76,11 @@ target_include_directories(MoonlightVegaCore PRIVATE
   "${MOONLIGHT_COMMON_DIR}/src"
 )
 
-target_link_libraries(MoonlightVegaCore PRIVATE moonlight-common-c)
+target_link_libraries(MoonlightVegaCore PRIVATE
+  moonlight-common-c
+  mbedcrypto
+  mbedtls
+  mbedx509
+)
 
 install(TARGETS MoonlightVegaCore)

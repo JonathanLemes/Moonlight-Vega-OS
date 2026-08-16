@@ -14,6 +14,7 @@ export interface ServerInfo {
   gsVersion: string;
   uniqueId: string;
   state: string;
+  httpsPort: number;
   paired: boolean;
   currentGame: number;
   serverCodecModeSupport: number;
@@ -27,12 +28,16 @@ export interface StreamConfig {
   codec: 'h264' | 'hevc' | 'av1';
 }
 
+export interface MoonlightApp {
+  id: number;
+  name: string;
+}
+
 export interface MoonlightClientApi {
   discoverHosts(): Promise<ServerInfo[]>;
   getServerInfo(host: string): Promise<ServerInfo>;
   pair(host: string, pin: string): Promise<void>;
-  getApps(host: string): Promise<unknown[]>;
+  getApps(host: string): Promise<MoonlightApp[]>;
   startStream(host: string, appId: number, config: StreamConfig): Promise<void>;
   stopStream(): Promise<void>;
 }
-

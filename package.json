@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@amazon-devices/react-native-kepler": "~4.0.0",
+    "@amazon-devices/react-native-w3cmedia": "^2.3.2",
     "@moonlight-vega/core": "file:native/moonlight/MoonlightVegaCore",
     "react": "19.2.0",
     "react-native": "0.83.0"
@@ -51,6 +52,8 @@
   "kepler": {
     "projectType": "application",
     "appName": "MoonlightVega",
-    "targets": ["tv"]
+    "targets": [
+      "tv"
+    ]
   }
 }

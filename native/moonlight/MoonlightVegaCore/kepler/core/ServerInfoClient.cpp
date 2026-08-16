@@ -374,6 +374,7 @@ ServerInfo ServerInfoClient::fetch(
       gsVersion.empty() ? extractTag(body, "gfeversion") : gsVersion,
       extractTag(body, "uniqueid"),
       extractTag(body, "state"),
+      static_cast<std::uint16_t>(parseInt(extractTag(body, "httpsport"), 47984)),
       parseInt(extractTag(body, "pairstatus")) == 1,
       parseInt(extractTag(body, "currentgame")),
       parseDouble(extractTag(body, "servercodecmodesupport"))};

@@ -34,6 +34,12 @@ public:
 
   virtual com::amazon::kepler::turbomodule::JSObject getCoreInfo() = 0;
   virtual com::amazon::kepler::turbomodule::Promise getServerInfo(std::string host, double port) = 0;
+  virtual com::amazon::kepler::turbomodule::Promise pair(std::string host, double port, std::string pin) = 0;
+  virtual com::amazon::kepler::turbomodule::Promise getApps(std::string host, double port) = 0;
+  virtual void setStreamEventHandler(com::amazon::kepler::turbomodule::Callback handler) = 0;
+  virtual com::amazon::kepler::turbomodule::Promise startStream(std::string host, double port, double appId, double width, double height, double fps, double bitrateKbps, std::string codec) = 0;
+  virtual com::amazon::kepler::turbomodule::Promise stopStream(std::string host, double port, bool quitApp) = 0;
+  virtual void sendControllerState(double buttons, double leftTrigger, double rightTrigger, double leftStickX, double leftStickY, double rightStickX, double rightStickY) = 0;
 };
 
 } // namespace MoonlightVegaCoreTurboModule
