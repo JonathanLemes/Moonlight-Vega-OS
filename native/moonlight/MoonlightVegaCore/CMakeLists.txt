@@ -16,6 +16,7 @@ endif()
 
 set(REPOSITORY_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../..")
 set(MOONLIGHT_COMMON_DIR "${REPOSITORY_ROOT}/third_party/moonlight-common-c")
+set(MBEDTLS_DIR "${REPOSITORY_ROOT}/third_party/mbedtls")
 
 if(NOT EXISTS "${MOONLIGHT_COMMON_DIR}/CMakeLists.txt")
   message(FATAL_ERROR
@@ -24,6 +25,23 @@ endif()
 
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build bundled native dependencies statically" FORCE)
 set(CODE_ANALYSIS OFF CACHE BOOL "Disable dependency static analysis" FORCE)
+set(ENABLE_PROGRAMS OFF CACHE BOOL "Do not build Mbed TLS programs" FORCE)
+set(ENABLE_TESTING OFF CACHE BOOL "Do not build Mbed TLS tests" FORCE)
+set(USE_SHARED_MBEDTLS_LIBRARY OFF CACHE BOOL "Build static Mbed TLS" FORCE)
+set(USE_STATIC_MBEDTLS_LIBRARY ON CACHE BOOL "Build static Mbed TLS" FORCE)
+
+if(NOT EXISTS "${MBEDTLS_DIR}/CMakeLists.txt")
+  message(FATAL_ERROR
+    "Mbed TLS is missing. Run: git submodule update --init --recursive")
+endif()
+
+add_subdirectory(
+  "${MBEDTLS_DIR}"
+  "${CMAKE_CURRENT_BINARY_DIR}/mbedtls"
+  EXCLUDE_FROM_ALL
+)
+
+set(USE_MBEDTLS ON CACHE BOOL "Use bundled Mbed TLS for moonlight-common-c" FORCE)
 add_subdirectory(
   "${MOONLIGHT_COMMON_DIR}"
   "${CMAKE_CURRENT_BINARY_DIR}/moonlight-common-c"
@@ -55,4 +73,3 @@ target_include_directories(MoonlightVegaCore PRIVATE
 target_link_libraries(MoonlightVegaCore PRIVATE moonlight-common-c)
 
 install(TARGETS MoonlightVegaCore)
-

@@ -7,4 +7,4 @@ buildinfo.json
 *.vpkg
 *.log
 coverage/
-
+CMakeUserPresets.json

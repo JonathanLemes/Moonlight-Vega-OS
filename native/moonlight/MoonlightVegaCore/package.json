@@ -12,7 +12,7 @@
   ],
   "scripts": {
     "clean": "rm -rf build buildinfo.json dist",
-    "kepler-codegen": "keplerscript-turbomodule-api codegen src/turbo-modules/MoonlightVegaCore.ts -o kepler/turbo-modules/ --new -s MoonlightVegaCoreTurboModule",
+    "kepler-codegen": "keplerscript-turbomodule-api codegen src/turbo-modules/MoonlightVegaCore.ts -o kepler/turbo-modules/ -s MoonlightVegaCoreTurboModule",
     "build:js": "tsc -p tsconfig.json",
     "build:native:debug": "vega build -t armv7 -b Debug",
     "build:native:release": "vega build -t armv7 -b Release",
@@ -30,4 +30,3 @@
     "targets": ["tv"]
   }
 }
-

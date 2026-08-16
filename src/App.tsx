@@ -1,12 +1,12 @@
 import React from 'react';
-import {SafeAreaView, StatusBar, StyleSheet} from 'react-native';
+import {StatusBar, StyleSheet, View} from 'react-native';
 import {HostInfoScreen} from './screens/HostInfoScreen';
 
 export const App = () => (
-  <SafeAreaView style={styles.app}>
+  <View style={styles.app}>
     <StatusBar barStyle="light-content" backgroundColor="#081018" />
     <HostInfoScreen />
-  </SafeAreaView>
+  </View>
 );
 
 const styles = StyleSheet.create({
@@ -15,4 +15,3 @@ const styles = StyleSheet.create({
     backgroundColor: '#081018',
   },
 });
-
