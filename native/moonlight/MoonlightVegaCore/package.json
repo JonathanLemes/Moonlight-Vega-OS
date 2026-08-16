@@ -1,0 +1,33 @@
+{
+  "name": "@moonlight-vega/core",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "kepler",
+    "src",
+    "CMakeLists.txt",
+    "react-native.config.js"
+  ],
+  "scripts": {
+    "clean": "rm -rf build buildinfo.json dist",
+    "kepler-codegen": "keplerscript-turbomodule-api codegen src/turbo-modules/MoonlightVegaCore.ts -o kepler/turbo-modules/ --new -s MoonlightVegaCoreTurboModule",
+    "build:js": "tsc -p tsconfig.json",
+    "build:native:debug": "vega build -t armv7 -b Debug",
+    "build:native:release": "vega build -t armv7 -b Release",
+    "build": "npm-run-all build:js build:native:release"
+  },
+  "dependencies": {
+    "@amazon-devices/keplerscript-turbomodule-api": "^1.0.0"
+  },
+  "devDependencies": {
+    "npm-run-all": "^4.1.5",
+    "typescript": "5.8.3"
+  },
+  "kepler": {
+    "projectType": "turbomodule",
+    "targets": ["tv"]
+  }
+}
+
