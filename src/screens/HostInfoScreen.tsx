@@ -25,6 +25,7 @@ export const HostInfoScreen = ({onLaunch}: Props) => {
   const [apps, setApps] = useState<MoonlightApp[]>([]);
   const [pin, setPin] = useState(makePin);
   const [loading, setLoading] = useState(false);
+  const [connectingAddress, setConnectingAddress] = useState<string | null>(null);
   const [discovering, setDiscovering] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const coreInfo = useMemo(() => moonlightService.getCoreInfo(), []);
@@ -85,12 +86,23 @@ export const HostInfoScreen = ({onLaunch}: Props) => {
     }
   };
 
+  // The native GameStream calls below can block for a while (TLS handshake,
+  // socket timeouts). Setting the loading state and then immediately awaiting
+  // one of them back-to-back risks React never getting a chance to commit and
+  // paint that state before the call ties up the thread — the button would
+  // sit frozen instead of showing its spinner. Yielding to the next frame
+  // first guarantees the loading UI is actually on screen before we start.
+  const nextFrame = () =>
+    new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+
   const connect = async (address: string) => {
     const selectedHost = address.trim();
     setHost(selectedHost);
+    setConnectingAddress(selectedHost);
     setLoading(true);
     setError(null);
     setApps([]);
+    await nextFrame();
     try {
       const info = await moonlightService.getServerInfo(selectedHost);
       setServer(info);
@@ -107,12 +119,14 @@ export const HostInfoScreen = ({onLaunch}: Props) => {
       fail(reason);
     } finally {
       setLoading(false);
+      setConnectingAddress(null);
     }
   };
 
   const pair = async () => {
     setLoading(true);
     setError(null);
+    await nextFrame();
     try {
       await moonlightService.pair(host, pin);
       const info = await moonlightService.getServerInfo(host);
@@ -187,8 +201,9 @@ export const HostInfoScreen = ({onLaunch}: Props) => {
             value={host}
           />
           <FocusedButton
-            disabled={loading || host.trim().length === 0}
+            disabled={host.trim().length === 0}
             label={loading ? 'Connecting…' : 'Connect'}
+            loading={connectingAddress === host.trim()}
             onPress={() => connect(host)}
           />
         </View>
@@ -207,7 +222,9 @@ export const HostInfoScreen = ({onLaunch}: Props) => {
               {discoveredHosts.map((item, index) => (
                 <FocusedButton
                   key={`${item.uniqueId}-${item.address}`}
+                  disabled={loading && connectingAddress !== item.address}
                   label={`${item.hostname || 'GameStream'} · ${item.address}`}
+                  loading={connectingAddress === item.address}
                   onPress={() => connect(item.address)}
                   preferredFocus={index === 0}
                 />
@@ -241,8 +258,8 @@ export const HostInfoScreen = ({onLaunch}: Props) => {
             <View style={styles.pinRow}>
               <Text style={styles.pin}>{pin}</Text>
               <FocusedButton
-                disabled={loading}
                 label={loading ? 'Waiting for PIN…' : 'Start pairing'}
+                loading={loading}
                 onPress={pair}
                 preferredFocus
               />

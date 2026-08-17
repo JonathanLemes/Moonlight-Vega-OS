@@ -24,6 +24,7 @@
 #include <array>
 #include <cerrno>
 #include <cctype>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
@@ -179,28 +180,74 @@ std::string makeUuid() {
   return result.str();
 }
 
-std::string dataDirectory() {
-  const char* xdg = std::getenv("XDG_DATA_HOME");
-  const char* home = std::getenv("HOME");
-  std::string base = xdg && *xdg
-      ? xdg
-      : (home && *home && std::string(home) != "/"
-             ? std::string(home) + "/.local/share"
-             : (access("/data", W_OK) == 0 ? "/data" : "/tmp"));
-  const std::string path = base + "/moonlight-vega";
+bool makeDirectoryTree(const std::string& path) {
   std::size_t slash = 1;
   while (true) {
     slash = path.find('/', slash);
     const std::string part = path.substr(0, slash);
     if (!part.empty() && mkdir(part.c_str(), 0700) != 0 && errno != EEXIST) {
-      throw std::runtime_error(
-          "Could not create Moonlight credential directory: " +
-          std::string(std::strerror(errno)));
+      return false;
     }
     if (slash == std::string::npos) break;
     ++slash;
   }
-  return path;
+  return true;
+}
+
+// access(W_OK) can report writable in sandboxes that still reject the actual
+// open()/write() (capability-based permission models), so probe with a real
+// file instead of trusting the syscall alone.
+bool isGenuinelyWritable(const std::string& directory) {
+  if (!makeDirectoryTree(directory)) return false;
+  const std::string probe = directory + "/.write-test";
+  std::ofstream output(probe, std::ios::binary | std::ios::trunc);
+  if (!output || !(output << "1")) return false;
+  output.close();
+  std::remove(probe.c_str());
+  return true;
+}
+
+std::string resolveDataDirectory() {
+  const char* xdg = std::getenv("XDG_DATA_HOME");
+  const char* home = std::getenv("HOME");
+  struct Candidate {
+    const char* label;
+    std::string path;
+  };
+  const std::vector<Candidate> candidates = {
+      {"XDG_DATA_HOME", xdg && *xdg ? std::string(xdg) + "/moonlight-vega" : ""},
+      {"HOME", home && *home && std::string(home) != "/"
+                   ? std::string(home) + "/.local/share/moonlight-vega"
+                   : ""},
+      {"/data", "/data/moonlight-vega"},
+      {"/tmp (not persistent across reboot)", "/tmp/moonlight-vega"},
+  };
+  for (const auto& candidate : candidates) {
+    if (candidate.path.empty()) continue;
+    if (isGenuinelyWritable(candidate.path)) {
+      std::fprintf(
+          stderr,
+          "[MoonlightVegaCore] credential storage: using %s -> %s\n",
+          candidate.label,
+          candidate.path.c_str());
+      return candidate.path;
+    }
+    std::fprintf(
+        stderr,
+        "[MoonlightVegaCore] credential storage: %s (%s) not writable, trying next\n",
+        candidate.label,
+        candidate.path.c_str());
+  }
+  throw std::runtime_error(
+      "Could not find a writable directory for Moonlight credentials");
+}
+
+// Resolves and probes candidate directories on the first call only; every
+// caller (identity(), pinnedCertificatePath() on every HTTPS request, ...)
+// shares the cached result instead of re-probing the filesystem each time.
+std::string dataDirectory() {
+  static const std::string cached = resolveDataDirectory();
+  return cached;
 }
 
 std::string readFile(const std::string& path) {
