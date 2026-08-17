@@ -339,7 +339,8 @@ std::string parseHttpBody(const std::string& response) {
 ServerInfo ServerInfoClient::fetch(
     const std::string& host,
     std::uint16_t port,
-    int timeoutMilliseconds) {
+    int timeoutMilliseconds,
+    const std::string& clientUniqueId) {
   if (host.empty()) {
     throw std::invalid_argument("Host must not be empty");
   }
@@ -351,7 +352,7 @@ ServerInfo ServerInfoClient::fetch(
   const bool isIpv6Literal = host.find(':') != std::string::npos;
   const std::string hostHeader = isIpv6Literal ? "[" + host + "]" : host;
   const std::string request =
-      "GET /serverinfo?uniqueid=0123456789ABCDEF&uuid=" + makeUuid() +
+      "GET /serverinfo?uniqueid=" + clientUniqueId + "&uuid=" + makeUuid() +
       " HTTP/1.1\r\nHost: " + hostHeader + ":" + std::to_string(port) +
       "\r\nAccept: application/xml\r\nConnection: close\r\n\r\n";
 

@@ -1,8 +1,12 @@
 import React, {useState} from 'react';
-import {StatusBar, StyleSheet, View} from 'react-native';
+import {LogBox, StatusBar, StyleSheet, View} from 'react-native';
 import {HostInfoScreen} from './screens/HostInfoScreen';
 import {StreamScreen} from './screens/StreamScreen';
 import type {MoonlightApp} from './types/moonlight';
+
+if (__DEV__) {
+  LogBox.ignoreAllLogs();
+}
 
 export const App = () => {
   const [stream, setStream] = useState<{host: string; app: MoonlightApp} | null>(null);

@@ -40,6 +40,7 @@ namespace moonlight::gamestream {
 namespace {
 
 constexpr int kTimeoutMs = 8000;
+constexpr int kPairingTimeoutMs = 5 * 60 * 1000;
 constexpr std::size_t kMaximumResponseBytes = 4 * 1024 * 1024;
 
 std::string mbedError(const std::string& operation, int code) {
@@ -183,7 +184,9 @@ std::string dataDirectory() {
   const char* home = std::getenv("HOME");
   std::string base = xdg && *xdg
       ? xdg
-      : (home && *home ? std::string(home) + "/.local/share" : "/tmp");
+      : (home && *home && std::string(home) != "/"
+             ? std::string(home) + "/.local/share"
+             : (access("/data", W_OK) == 0 ? "/data" : "/tmp"));
   const std::string path = base + "/moonlight-vega";
   std::size_t slash = 1;
   while (true) {
@@ -392,7 +395,10 @@ class Socket {
   int descriptor_;
 };
 
-Socket connectTcp(const std::string& host, std::uint16_t port) {
+Socket connectTcp(
+    const std::string& host,
+    std::uint16_t port,
+    int timeoutMilliseconds = kTimeoutMs) {
   addrinfo hints{};
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
@@ -417,7 +423,7 @@ Socket connectTcp(const std::string& host, std::uint16_t port) {
         connect(descriptor, address->ai_addr, address->ai_addrlen);
     if (result < 0 && errno == EINPROGRESS) {
       pollfd item{descriptor, POLLOUT, 0};
-      result = poll(&item, 1, kTimeoutMs);
+      result = poll(&item, 1, timeoutMilliseconds);
       if (result > 0) {
         socklen_t length = sizeof(lastError);
         getsockopt(descriptor, SOL_SOCKET, SO_ERROR, &lastError, &length);
@@ -429,7 +435,9 @@ Socket connectTcp(const std::string& host, std::uint16_t port) {
     }
     if (result == 0) {
       fcntl(descriptor, F_SETFL, flags);
-      timeval timeout{kTimeoutMs / 1000, (kTimeoutMs % 1000) * 1000};
+      timeval timeout{
+          timeoutMilliseconds / 1000,
+          (timeoutMilliseconds % 1000) * 1000};
       setsockopt(
           descriptor, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
       setsockopt(
@@ -501,8 +509,9 @@ std::string httpBody(const std::string& response) {
 std::string plainGet(
     const std::string& host,
     std::uint16_t port,
-    const std::string& path) {
-  Socket socket = connectTcp(host, port);
+    const std::string& path,
+    int timeoutMilliseconds = kTimeoutMs) {
+  Socket socket = connectTcp(host, port, timeoutMilliseconds);
   const auto request = requestText(host, port, path);
   std::size_t sent = 0;
   while (sent < request.size()) {
@@ -762,7 +771,8 @@ GameStreamClient::GameStreamClient(std::string host, std::uint16_t httpPort)
 }
 
 network::ServerInfo GameStreamClient::serverInfo() const {
-  return network::ServerInfoClient::fetch(host_, httpPort_);
+  return network::ServerInfoClient::fetch(
+      host_, httpPort_, kTimeoutMs, identity().uniqueId);
 }
 
 void GameStreamClient::pair(const std::string& pin) {
@@ -791,7 +801,8 @@ void GameStreamClient::pair(const std::string& pin) {
       httpPort_,
       "/pair?" + commonQuery() +
           "&devicename=roth&updateState=1&phrase=getservercert&salt=" +
-          hex(salt.data(), salt.size()) + "&clientcert=" + clientCertHex);
+          hex(salt.data(), salt.size()) + "&clientcert=" + clientCertHex,
+      kPairingTimeoutMs);
   requireGameStreamSuccess(response, "Pairing");
   if (tag(response, "paired") != "1") {
     throw std::runtime_error("Wolf rejected the pairing PIN");

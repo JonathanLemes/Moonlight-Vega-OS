@@ -19,6 +19,7 @@ MoonlightVegaCoreSpec::~MoonlightVegaCoreSpec() = default;
 
 void MoonlightVegaCoreSpec::aggregateMethods(MethodAggregator<KeplerTurboModule>& methodAggregator) const noexcept {
   methodAggregator.addMethod("getCoreInfo", &MoonlightVegaCoreSpec::getCoreInfo);
+  methodAggregator.addMethod("discoverHosts", &MoonlightVegaCoreSpec::discoverHosts);
   methodAggregator.addMethod("getServerInfo", &MoonlightVegaCoreSpec::getServerInfo);
   methodAggregator.addMethod("pair", &MoonlightVegaCoreSpec::pair);
   methodAggregator.addMethod("getApps", &MoonlightVegaCoreSpec::getApps);

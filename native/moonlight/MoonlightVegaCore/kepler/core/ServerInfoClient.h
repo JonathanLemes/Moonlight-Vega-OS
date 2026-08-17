@@ -24,7 +24,8 @@ class ServerInfoClient {
   static ServerInfo fetch(
       const std::string& host,
       std::uint16_t port,
-      int timeoutMilliseconds = 5000);
+      int timeoutMilliseconds = 5000,
+      const std::string& clientUniqueId = "0123456789ABCDEF");
 };
 
 }  // namespace moonlight::network

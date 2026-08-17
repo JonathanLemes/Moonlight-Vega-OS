@@ -15,6 +15,7 @@ class MoonlightVegaCore : public MoonlightVegaCoreSpec {
   ~MoonlightVegaCore() noexcept override;
 
   com::amazon::kepler::turbomodule::JSObject getCoreInfo() override;
+  com::amazon::kepler::turbomodule::Promise discoverHosts() override;
   com::amazon::kepler::turbomodule::Promise getServerInfo(
       std::string host,
       double port) override;

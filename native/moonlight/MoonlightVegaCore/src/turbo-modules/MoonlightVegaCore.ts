@@ -3,6 +3,7 @@ import {TurboModuleRegistry} from '@amazon-devices/keplerscript-turbomodule-api'
 
 export interface MoonlightVegaCore extends KeplerTurboModule {
   getCoreInfo: () => Object;
+  discoverHosts: () => Promise<Object>;
   getServerInfo: (host: string, port: number) => Promise<Object>;
   pair: (host: string, port: number, pin: string) => Promise<Object>;
   getApps: (host: string, port: number) => Promise<Object>;

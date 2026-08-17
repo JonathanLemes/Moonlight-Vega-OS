@@ -1,4 +1,4 @@
-import React, {useMemo, useState} from 'react';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {
   FlatList,
   Pressable,
@@ -15,19 +15,34 @@ interface Props {
   onLaunch: (host: string, app: MoonlightApp) => void;
 }
 
-const makePin = () => String(Math.floor(1000 + Math.random() * 9000));
+const makePin = () =>
+  __DEV__ ? '1234' : String(Math.floor(1000 + Math.random() * 9000));
 
 export const HostInfoScreen = ({onLaunch}: Props) => {
   const [host, setHost] = useState('');
+  const [discoveredHosts, setDiscoveredHosts] = useState<ServerInfo[]>([]);
   const [server, setServer] = useState<ServerInfo | null>(null);
   const [apps, setApps] = useState<MoonlightApp[]>([]);
   const [pin, setPin] = useState(makePin);
   const [loading, setLoading] = useState(false);
+  const [discovering, setDiscovering] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const coreInfo = useMemo(() => moonlightService.getCoreInfo(), []);
 
   const fail = (reason: unknown) => {
-    setError(reason instanceof Error ? reason.message : String(reason));
+    if (reason instanceof Error) {
+      setError(reason.message);
+      return;
+    }
+    if (reason && typeof reason === 'object' && 'message' in reason) {
+      setError(String(reason.message));
+      return;
+    }
+    try {
+      setError(typeof reason === 'string' ? reason : JSON.stringify(reason));
+    } catch {
+      setError(String(reason));
+    }
   };
 
   const loadApps = async (address: string) => {
@@ -38,16 +53,50 @@ export const HostInfoScreen = ({onLaunch}: Props) => {
     }
   };
 
-  const connect = async () => {
+  useEffect(() => {
+    let active = true;
+    moonlightService
+      .discoverHosts()
+      .then(hosts => {
+        if (active) {
+          setDiscoveredHosts(hosts);
+        }
+      })
+      .catch(fail)
+      .finally(() => {
+        if (active) {
+          setDiscovering(false);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const discover = async () => {
+    setDiscovering(true);
+    setError(null);
+    try {
+      setDiscoveredHosts(await moonlightService.discoverHosts());
+    } catch (reason) {
+      fail(reason);
+    } finally {
+      setDiscovering(false);
+    }
+  };
+
+  const connect = async (address: string) => {
+    const selectedHost = address.trim();
+    setHost(selectedHost);
     setLoading(true);
     setError(null);
     setApps([]);
     try {
-      const info = await moonlightService.getServerInfo(host);
+      const info = await moonlightService.getServerInfo(selectedHost);
       setServer(info);
       if (info.paired) {
         try {
-          await loadApps(host);
+          await loadApps(selectedHost);
         } catch {
           // PairStatus can reflect another Moonlight client. HTTPS proves whether
           // this app's persisted client certificate is paired.
@@ -124,33 +173,64 @@ export const HostInfoScreen = ({onLaunch}: Props) => {
         </Text>
       </View>
 
-      <View style={styles.connectionRow}>
-        <TextInput
-          accessibilityLabel="Wolf host address"
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="url"
-          onChangeText={setHost}
-          onSubmitEditing={connect}
-          placeholder="Wolf or Sunshine host name / IP"
-          placeholderTextColor="#7890a3"
-          style={styles.input}
-          value={host}
-        />
-        <FocusedButton
-          disabled={loading || host.trim().length === 0}
-          label={loading ? 'Connecting…' : 'Connect'}
-          onPress={connect}
-          preferredFocus
-        />
-      </View>
+      {!server ? (
+        <View style={styles.connectionRow}>
+          <TextInput
+            accessibilityLabel="Wolf host address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+            onChangeText={setHost}
+            onSubmitEditing={() => connect(host)}
+            placeholder="Wolf or Sunshine host name / IP"
+            placeholderTextColor="#7890a3"
+            style={styles.input}
+            value={host}
+          />
+          <FocusedButton
+            disabled={loading || host.trim().length === 0}
+            label={loading ? 'Connecting…' : 'Connect'}
+            onPress={() => connect(host)}
+          />
+        </View>
+      ) : (
+        <Text style={styles.connectedAddress}>
+          {server.hostname || 'GameStream'} · {host}
+        </Text>
+      )}
 
       <View style={styles.card}>
         {error ? <Text style={styles.error}>{error}</Text> : null}
-        {!server && !error ? (
-          <Text style={styles.empty}>
-            Enter the LAN address of the computer running Wolf or Sunshine.
-          </Text>
+        {!server && discoveredHosts.length > 0 ? (
+          <View style={styles.discovered}>
+            <Text style={styles.discoveredTitle}>Servers on this network</Text>
+            <View style={styles.hostButtons}>
+              {discoveredHosts.map((item, index) => (
+                <FocusedButton
+                  key={`${item.uniqueId}-${item.address}`}
+                  label={`${item.hostname || 'GameStream'} · ${item.address}`}
+                  onPress={() => connect(item.address)}
+                  preferredFocus={index === 0}
+                />
+              ))}
+            </View>
+          </View>
+        ) : null}
+        {!server && discoveredHosts.length === 0 && !error ? (
+          <View style={styles.discovered}>
+            <Text style={styles.empty}>
+              {discovering
+                ? 'Searching the local network for Sunshine and Wolf…'
+                : 'No server was found automatically. Enter its LAN address above.'}
+            </Text>
+            {!discovering ? (
+              <FocusedButton
+                label="Search again"
+                onPress={discover}
+                preferredFocus
+              />
+            ) : null}
+          </View>
         ) : null}
         {server && !server.paired ? (
           <View style={styles.pairing}>
@@ -194,12 +274,23 @@ const AppCard = ({
   onPress: () => void;
 }) => {
   const [focused, setFocused] = useState(false);
+  const cardRef = useRef<View & {requestTVFocus(): void}>(null);
+  useEffect(() => {
+    if (!preferredFocus) {
+      return;
+    }
+    const frame = requestAnimationFrame(() => {
+      cardRef.current?.requestTVFocus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [preferredFocus]);
   return (
     <Pressable
       accessibilityLabel={`Launch ${app.name}`}
       accessibilityRole="button"
       focusable
       hasTVPreferredFocus={preferredFocus}
+      ref={cardRef}
       onBlur={() => setFocused(false)}
       onFocus={() => setFocused(true)}
       onPress={onPress}
@@ -227,6 +318,7 @@ const styles = StyleSheet.create({
   title: {color: '#fff', fontSize: 46, fontWeight: '800', marginTop: 8},
   subtitle: {color: '#a8bac8', fontSize: 21, marginTop: 8},
   connectionRow: {alignItems: 'center', flexDirection: 'row', gap: 18},
+  connectedAddress: {color: '#52c7f4', fontSize: 22, fontWeight: '700'},
   input: {
     backgroundColor: '#111f2b',
     borderColor: '#2b4255',
@@ -247,6 +339,9 @@ const styles = StyleSheet.create({
     padding: 28,
   },
   empty: {color: '#8197a8', fontSize: 22, textAlign: 'center'},
+  discovered: {alignItems: 'center', gap: 22},
+  discoveredTitle: {color: '#fff', fontSize: 28, fontWeight: '800'},
+  hostButtons: {flexDirection: 'row', flexWrap: 'wrap', gap: 18},
   error: {color: '#ff8f8f', fontSize: 20, marginBottom: 18, textAlign: 'center'},
   pairing: {alignItems: 'center'},
   serverName: {color: '#52c7f4', fontSize: 22, fontWeight: '700'},

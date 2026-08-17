@@ -8,13 +8,24 @@ import {moonlightService} from './moonlight';
 class AppendQueue {
   private sourceBuffer: SourceBuffer;
   private pending: ArrayBuffer[] = [];
+  private failed = false;
+  private onError: (message: string) => void;
 
-  constructor(sourceBuffer: SourceBuffer) {
+  constructor(sourceBuffer: SourceBuffer, onError: (message: string) => void) {
     this.sourceBuffer = sourceBuffer;
+    this.onError = onError;
     this.sourceBuffer.onupdateend = () => this.flush();
+    this.sourceBuffer.onerror = () => {
+      this.failed = true;
+      this.pending = [];
+      this.onError('SourceBuffer rejected the stream format');
+    };
   }
 
   push(data: ArrayBuffer): void {
+    if (this.failed) {
+      return;
+    }
     this.pending.push(data);
     this.flush();
   }
@@ -34,8 +45,11 @@ class AppendQueue {
     try {
       this.sourceBuffer.appendBuffer(combined);
     } catch (error) {
-      this.pending.unshift(...batch);
-      throw error;
+      this.failed = true;
+      this.pending = [];
+      this.onError(
+        error instanceof Error ? error.message : String(error),
+      );
     }
   }
 }
@@ -58,6 +72,15 @@ export class VegaStreamPlayer {
 
   async initialize(): Promise<void> {
     await this.player.initialize();
+    this.player.addEventListener('error', () => {
+      const mediaError = this.player.error;
+      this.onStatus(
+        `Vega playback error ${mediaError?.code ?? 'unknown'}: ${
+          mediaError?.message || 'unsupported or invalid media'
+        }`,
+        true,
+      );
+    });
     this.mediaSource.onsourceopen = () => {
       this.sourceOpen = true;
       this.mediaSource.duration = Number.POSITIVE_INFINITY;
@@ -108,6 +131,7 @@ export class VegaStreamPlayer {
       if (event.startsWith('video-init:')) {
         this.videoQueue = new AppendQueue(
           this.mediaSource.addSourceBuffer(event.slice(11)),
+          message => this.onStatus(`Video buffer error: ${message}`, true),
         );
         this.videoQueue.push(data);
         this.playRequested = true;
@@ -115,10 +139,9 @@ export class VegaStreamPlayer {
       } else if (event === 'video') {
         this.videoQueue?.push(data);
       } else if (event.startsWith('audio-init:')) {
-        this.audioQueue = new AppendQueue(
-          this.mediaSource.addSourceBuffer(event.slice(11)),
-        );
-        this.audioQueue.push(data);
+        // Vega's Media Source implementation does not accept Opus in ISO BMFF.
+        // Audio is intentionally dropped until it is packaged as WebM below.
+        this.audioQueue = null;
       } else if (event === 'audio') {
         this.audioQueue?.push(data);
       }

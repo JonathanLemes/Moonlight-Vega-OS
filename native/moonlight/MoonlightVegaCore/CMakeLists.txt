@@ -51,6 +51,7 @@ add_subdirectory(
 set(HEADERS
   kepler/core/FragmentedMp4.h
   kepler/core/GameStreamClient.h
+  kepler/core/HostDiscovery.h
   kepler/core/ServerInfoClient.h
   kepler/core/StreamSession.h
   kepler/turbo-modules/generated/MoonlightVegaCoreSpec.h
@@ -60,6 +61,7 @@ set(HEADERS
 set(SOURCES
   kepler/core/FragmentedMp4.cpp
   kepler/core/GameStreamClient.cpp
+  kepler/core/HostDiscovery.cpp
   kepler/core/ServerInfoClient.cpp
   kepler/core/StreamSession.cpp
   kepler/turbo-modules/generated/MoonlightVegaCoreSpec.cpp

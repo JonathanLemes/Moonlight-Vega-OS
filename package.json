@@ -15,6 +15,7 @@
     "build:native:debug": "npm --prefix native/moonlight/MoonlightVegaCore run build:debug",
     "build:native:release": "npm --prefix native/moonlight/MoonlightVegaCore run build:release",
     "smoke:serverinfo": "c++ -std=c++17 -Wall -Wextra -Werror native/moonlight/MoonlightVegaCore/kepler/core/ServerInfoClient.cpp native/moonlight/MoonlightVegaCore/test/ServerInfoSmoke.cpp -o /tmp/moonlight-vega-serverinfo-smoke && /tmp/moonlight-vega-serverinfo-smoke",
+    "smoke:discovery": "c++ -std=c++17 -Wall -Wextra -Werror native/moonlight/MoonlightVegaCore/kepler/core/ServerInfoClient.cpp native/moonlight/MoonlightVegaCore/kepler/core/HostDiscovery.cpp native/moonlight/MoonlightVegaCore/test/HostDiscoverySmoke.cpp -o /tmp/moonlight-vega-discovery-smoke && /tmp/moonlight-vega-discovery-smoke",
     "doctor": "vega project doctor"
   },
   "dependencies": {

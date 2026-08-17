@@ -33,6 +33,7 @@ public:
   void aggregateMethods(com::amazon::kepler::turbomodule::MethodAggregator<KeplerTurboModule>& methodAggregator) const noexcept override;
 
   virtual com::amazon::kepler::turbomodule::JSObject getCoreInfo() = 0;
+  virtual com::amazon::kepler::turbomodule::Promise discoverHosts() = 0;
   virtual com::amazon::kepler::turbomodule::Promise getServerInfo(std::string host, double port) = 0;
   virtual com::amazon::kepler::turbomodule::Promise pair(std::string host, double port, std::string pin) = 0;
   virtual com::amazon::kepler::turbomodule::Promise getApps(std::string host, double port) = 0;

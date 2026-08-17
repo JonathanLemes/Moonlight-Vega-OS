@@ -24,6 +24,13 @@ export const moonlightService = {
     return MoonlightVegaCore.getCoreInfo() as CoreInfo;
   },
 
+  async discoverHosts(): Promise<ServerInfo[]> {
+    const result = (await MoonlightVegaCore.discoverHosts()) as {
+      hosts: ServerInfo[];
+    };
+    return result.hosts;
+  },
+
   async getServerInfo(host: string): Promise<ServerInfo> {
     return (await MoonlightVegaCore.getServerInfo(
       normalizeHost(host),

@@ -2,6 +2,7 @@
 
 #include "core/ServerInfoClient.h"
 #include "core/GameStreamClient.h"
+#include "core/HostDiscovery.h"
 
 #include <Limelight.h>
 
@@ -75,12 +76,27 @@ JSObject MoonlightVegaCore::getCoreInfo() {
   return info;
 }
 
+Promise MoonlightVegaCore::discoverHosts() {
+  return Promise([](std::shared_ptr<Promise> promise) {
+    try {
+      JSArray hosts;
+      for (const auto& host : moonlight::network::HostDiscovery::discover()) {
+        hosts.emplace_back(serverInfoObject(host));
+      }
+      JSObject result;
+      result["hosts"] = std::move(hosts);
+      promise->resolve(result);
+    } catch (const std::exception& error) {
+      promise->reject(error.what());
+    }
+  });
+}
+
 Promise MoonlightVegaCore::getServerInfo(std::string host, double port) {
   return Promise([host = std::move(host), port](std::shared_ptr<Promise> promise) {
     try {
-      const auto result = moonlight::network::ServerInfoClient::fetch(
-          host,
-          checkedPort(port));
+      moonlight::gamestream::GameStreamClient client(host, checkedPort(port));
+      const auto result = client.serverInfo();
       promise->resolve(serverInfoObject(result));
     } catch (const std::exception& error) {
       promise->reject(error.what());

@@ -1,5 +1,5 @@
-import React, {useState} from 'react';
-import {Pressable, StyleSheet, Text} from 'react-native';
+import React, {useEffect, useRef, useState} from 'react';
+import {Pressable, StyleSheet, Text, View} from 'react-native';
 
 interface FocusedButtonProps {
   label: string;
@@ -15,6 +15,17 @@ export const FocusedButton = ({
   onPress,
 }: FocusedButtonProps) => {
   const [focused, setFocused] = useState(false);
+  const buttonRef = useRef<View & {requestTVFocus(): void}>(null);
+
+  useEffect(() => {
+    if (!preferredFocus) {
+      return;
+    }
+    const frame = requestAnimationFrame(() => {
+      buttonRef.current?.requestTVFocus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [preferredFocus]);
 
   return (
     <Pressable
@@ -22,6 +33,7 @@ export const FocusedButton = ({
       disabled={disabled}
       focusable
       hasTVPreferredFocus={preferredFocus}
+      ref={buttonRef}
       onBlur={() => setFocused(false)}
       onFocus={() => setFocused(true)}
       onPress={onPress}
