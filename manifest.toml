@@ -4,6 +4,7 @@ schema-version = 1
 title = "Moonlight Vega"
 version = "0.1.0"
 id = "com.jonathanlemes.moonlightvega"
+icon = "@image/icon.png"
 
 [os.version]
 min = "1.2"

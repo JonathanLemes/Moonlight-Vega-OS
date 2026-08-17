@@ -146,11 +146,13 @@ export class VegaStreamPlayer {
       } else if (event === 'video') {
         this.videoQueue?.push(data);
       } else if (event.startsWith('audio-init:')) {
-        this.audioQueue = new AppendQueue(
-          this.mediaSource.addSourceBuffer(event.slice(11)),
-          message => this.onStatus(`Audio buffer error: ${message}`, true),
-        );
-        this.audioQueue.push(data);
+        // Vega's Media Source implementation does not accept Opus in ISO
+        // BMFF: adding this as a second SourceBuffer alongside video does
+        // not just fail silently, it takes the shared native pipeline's
+        // video renderer down with it (both audio writes and video render
+        // start failing together the instant playback starts). Audio stays
+        // dropped until it's packaged as WebM instead.
+        this.audioQueue = null;
       } else if (event === 'audio') {
         this.audioQueue?.push(data);
       }

@@ -49,11 +49,11 @@ export const FocusedButton = ({
 
 const styles = StyleSheet.create({
   button: {
-    minWidth: 220,
-    paddingHorizontal: 28,
-    paddingVertical: 16,
-    borderRadius: 8,
-    borderWidth: 3,
+    minWidth: 170,
+    paddingHorizontal: 20,
+    paddingVertical: 11,
+    borderRadius: 6,
+    borderWidth: 2,
     borderColor: '#2b4255',
     backgroundColor: '#1769aa',
     alignItems: 'center',
@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
   },
   label: {
     color: '#ffffff',
-    fontSize: 22,
+    fontSize: 16,
     fontWeight: '700',
   },
 });
