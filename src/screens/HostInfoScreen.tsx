@@ -94,14 +94,13 @@ export const HostInfoScreen = ({onLaunch}: Props) => {
     try {
       const info = await moonlightService.getServerInfo(selectedHost);
       setServer(info);
-      if (info.paired) {
-        try {
-          await loadApps(selectedHost);
-        } catch {
-          // PairStatus can reflect another Moonlight client. HTTPS proves whether
-          // this app's persisted client certificate is paired.
-          setServer({...info, paired: false});
-        }
+      try {
+        // Wolf's public PairStatus can lag or reflect a different Moonlight
+        // client. Authenticated HTTPS is the authoritative pairing check.
+        await loadApps(selectedHost);
+        setServer({...info, paired: true});
+      } catch {
+        setServer({...info, paired: false});
       }
     } catch (reason) {
       setServer(null);

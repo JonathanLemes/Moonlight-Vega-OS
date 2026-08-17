@@ -30,6 +30,11 @@ class AppendQueue {
     this.flush();
   }
 
+  fail(): void {
+    this.failed = true;
+    this.pending = [];
+  }
+
   private flush(): void {
     if (this.sourceBuffer.updating || this.pending.length === 0) {
       return;
@@ -73,6 +78,8 @@ export class VegaStreamPlayer {
   async initialize(): Promise<void> {
     await this.player.initialize();
     this.player.addEventListener('error', () => {
+      this.videoQueue?.fail();
+      this.audioQueue?.fail();
       const mediaError = this.player.error;
       this.onStatus(
         `Vega playback error ${mediaError?.code ?? 'unknown'}: ${
@@ -139,9 +146,11 @@ export class VegaStreamPlayer {
       } else if (event === 'video') {
         this.videoQueue?.push(data);
       } else if (event.startsWith('audio-init:')) {
-        // Vega's Media Source implementation does not accept Opus in ISO BMFF.
-        // Audio is intentionally dropped until it is packaged as WebM below.
-        this.audioQueue = null;
+        this.audioQueue = new AppendQueue(
+          this.mediaSource.addSourceBuffer(event.slice(11)),
+          message => this.onStatus(`Audio buffer error: ${message}`, true),
+        );
+        this.audioQueue.push(data);
       } else if (event === 'audio') {
         this.audioQueue?.push(data);
       }

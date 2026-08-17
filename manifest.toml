@@ -25,9 +25,33 @@ id = "/com.amazon.kepler.keplermediadescriptor_1@IKeplermediadescriptor_1"
 [[needs.module]]
 id = "/com.amazon.kepler.w3cmedia_2@IW3cmedia_3"
 
+[wants]
+[[wants.service]]
+id = "com.amazon.mediametrics.service"
 
+[[wants.privilege]]
+id = "com.amazon.devconf.privilege.accessibility"
 
+[[wants.service]]
+id = "com.amazon.mediabuffer.service"
 
+[[wants.service]]
+id = "com.amazon.mediatransform.service"
+
+[[wants.service]]
+id = "com.amazon.audio.stream"
+
+[[wants.service]]
+id = "com.amazon.audio.control"
+
+[[wants.service]]
+id = "com.amazon.audio.system"
+
+[[wants.service]]
+id = "com.amazon.media.server"
+
+[[wants.service]]
+id = "com.amazon.media.playersession.service"
 
 [components]
 [[components.interactive]]
@@ -35,4 +59,3 @@ id = "com.jonathanlemes.moonlightvega.main"
 runtime-module = "/com.amazon.kepler.runtime.react_native_kepler_4@IReactNativeKepler_0"
 launch-type = "singleton"
 categories = ["com.amazon.category.main"]
-

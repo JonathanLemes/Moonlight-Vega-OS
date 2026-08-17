@@ -362,6 +362,7 @@ std::vector<MediaChunk> FragmentedMp4::videoFrame(const DECODE_UNIT& unit) {
     for (std::size_t i = 1; i < 4; ++i) {
       codec << digits[sps[i] >> 4] << digits[sps[i] & 0x0f];
     }
+    codec << '"';
     chunks.push_back(MediaChunk{"video-init:" + codec.str(), videoInit(width_, height_, sps, pps)});
     videoInitialized_ = true;
   }
