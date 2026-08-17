@@ -79,8 +79,10 @@ export class VegaStreamPlayer {
   private videoQueue: AppendQueue | null = null;
   private audioQueue: AppendQueue | null = null;
   private surfaceReady = false;
-  private playRequested = false;
-  private audioPlayRequested = false;
+  private videoInitReceived = false;
+  private audioInitReceived = false;
+  private started = false;
+  private audioGraceTimer: ReturnType<typeof setTimeout> | null = null;
   private onStatus: (status: string, isError: boolean) => void;
 
   constructor(onStatus: (status: string, isError: boolean) => void) {
@@ -141,7 +143,7 @@ export class VegaStreamPlayer {
   setSurface(surfaceHandle: string): void {
     this.player.setSurfaceHandle(surfaceHandle);
     this.surfaceReady = true;
-    this.maybePlay();
+    this.maybeStart();
   }
 
   clearSurface(surfaceHandle: string): void {
@@ -150,6 +152,10 @@ export class VegaStreamPlayer {
   }
 
   async deinitialize(): Promise<void> {
+    if (this.audioGraceTimer) {
+      clearTimeout(this.audioGraceTimer);
+      this.audioGraceTimer = null;
+    }
     this.player.pause();
     this.audioPlayer.pause();
     await Promise.all([
@@ -194,8 +200,8 @@ export class VegaStreamPlayer {
           message => this.onStatus(`Video buffer error: ${message}`, true),
         );
         this.videoQueue.push(data);
-        this.playRequested = true;
-        this.maybePlay();
+        this.videoInitReceived = true;
+        this.maybeStart();
       } else if (event === 'video') {
         this.videoQueue?.push(data);
       }
@@ -217,8 +223,15 @@ export class VegaStreamPlayer {
           message => this.onStatus(`Audio buffer error: ${message}`, false),
         );
         this.audioQueue.push(data);
-        this.audioPlayRequested = true;
-        this.maybePlayAudio();
+        this.audioInitReceived = true;
+        if (this.started) {
+          // Video already started without waiting (grace period elapsed, or
+          // audio simply arrived after playback began) — join in now rather
+          // than staying silent for the rest of the session.
+          this.playAudio();
+        } else {
+          this.maybeStart();
+        }
       } else if (event === 'audio') {
         this.audioQueue?.push(data);
       }
@@ -233,9 +246,40 @@ export class VegaStreamPlayer {
     }
   }
 
-  private maybePlay(): void {
-    if (!this.surfaceReady || !this.playRequested) {
+  // Video and audio are two independent players/pipelines now (see class
+  // comment), so nothing keeps their clocks aligned the way a single shared
+  // MediaSource would. The best we can do at this layer is start both as
+  // close to the same instant as possible: once video is ready to play, wait
+  // up to AUDIO_GRACE_MS for audio to also be ready and start them together;
+  // if audio isn't ready by then, start video alone rather than delay it
+  // indefinitely, and let audio join in as soon as it does arrive.
+  private static readonly AUDIO_GRACE_MS = 500;
+
+  private maybeStart(): void {
+    if (this.started || !this.surfaceReady || !this.videoInitReceived) {
       return;
+    }
+    if (this.audioInitReceived) {
+      this.startBoth();
+      return;
+    }
+    if (this.audioGraceTimer) {
+      return;
+    }
+    this.audioGraceTimer = setTimeout(() => {
+      this.audioGraceTimer = null;
+      this.startBoth();
+    }, VegaStreamPlayer.AUDIO_GRACE_MS);
+  }
+
+  private startBoth(): void {
+    if (this.started) {
+      return;
+    }
+    this.started = true;
+    if (this.audioGraceTimer) {
+      clearTimeout(this.audioGraceTimer);
+      this.audioGraceTimer = null;
     }
     this.player.play().catch(reason => {
       this.onStatus(
@@ -245,13 +289,12 @@ export class VegaStreamPlayer {
         true,
       );
     });
-    this.playRequested = false;
+    if (this.audioInitReceived) {
+      this.playAudio();
+    }
   }
 
-  private maybePlayAudio(): void {
-    if (!this.audioPlayRequested) {
-      return;
-    }
+  private playAudio(): void {
     this.audioPlayer.play().catch(reason => {
       this.onStatus(
         `Audio playback failed: ${
@@ -260,6 +303,5 @@ export class VegaStreamPlayer {
         false,
       );
     });
-    this.audioPlayRequested = false;
   }
 }
