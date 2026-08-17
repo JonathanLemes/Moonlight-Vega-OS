@@ -39,5 +39,14 @@ export interface MoonlightClientApi {
   pair(host: string, pin: string): Promise<void>;
   getApps(host: string): Promise<MoonlightApp[]>;
   startStream(host: string, appId: number, config: StreamConfig): Promise<void>;
-  stopStream(): Promise<void>;
+  stopStream(host: string, quitApp: boolean): Promise<void>;
+  sendControllerState(
+    buttons: number,
+    leftTrigger: number,
+    rightTrigger: number,
+    leftStickX: number,
+    leftStickY: number,
+    rightStickX: number,
+    rightStickY: number,
+  ): void;
 }

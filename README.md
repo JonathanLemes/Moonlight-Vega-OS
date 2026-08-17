@@ -1,163 +1,156 @@
 # Moonlight Vega
 
-Moonlight Vega is an early native Moonlight client for Amazon Vega OS and Fire
-TV. The repository currently implements the first vertical slice only: a React
-Native screen calls a C++ TurboModule, the TurboModule links
-`moonlight-common-c`, and native code requests and displays a Sunshine/Wolf
-`/serverinfo` response.
+Moonlight Vega is a native Moonlight client for Amazon Vega OS and Fire TV. It
+connects to Sunshine and Wolf hosts, pairs securely, lists the server's
+applications/integrations, and streams H.264 video with Opus audio and gamepad
+input.
 
-Video decoding, audio playback, input forwarding, pairing, application listing,
-host discovery, and stream lifecycle management are intentionally out of scope
-for this scaffold.
+The current implementation targets 1080p60. HEVC, AV1, 4K60, rumble, and
+multiple simultaneous controllers are not implemented yet.
 
-## Current milestone
+## Implemented
 
-- React Native 0.83 and TypeScript television UI
-- Fire TV remote-friendly host form and server information screen
-- Node-API C++ TurboModule with generated TypeScript bindings
-- Native `moonlight-common-c`, ENet, nanors, and Mbed TLS builds through CMake
-- Plain HTTP GameStream `/serverinfo` transport on port `47989`
-- Builds for Vega `armv7`, `aarch64`, and `x86_64` targets
-- Verified installation and launch on a connected Fire TV running Vega OS 1.2
-- Verified `/serverinfo` parsing against a Wolf server
+- LAN host discovery plus manual host entry
+- Modern Sunshine/Wolf certificate and PIN pairing
+- Persistent client certificate, private key, and pinned server certificate
+- Authenticated `/serverinfo` and application-list requests
+- Application launch, resume, disconnect, and quit
+- `moonlight-common-c` streaming and input protocols
+- H.264 access units packaged as fragmented MP4 for Vega hardware playback
+- Opus packets packaged as fragmented MP4 for Vega audio playback
+- Fire TV remote navigation throughout the React Native UI
+- Bluetooth gamepad forwarding with Xbox-compatible button, trigger, and stick
+  mapping during a stream
+- Vega `armv7`, `aarch64`, and `x86_64` builds
 
-The currently callable TypeScript API is deliberately small:
-
-```ts
-MoonlightVegaCore.getCoreInfo(): CoreInfo;
-MoonlightVegaCore.getServerInfo(host, port): Promise<ServerInfo>;
-```
-
-The intended future API (`discoverHosts`, `pair`, `getApps`, `startStream`, and
-`stopStream`) is represented by `MoonlightClientApi` in
-`src/types/moonlight.ts`, but those operations are not exposed by the native
-module yet.
+Media payloads stay in the native-to-media callback path. React Native owns the
+screens and session controls; it does not parse GameStream packets or decode
+media.
 
 ## Repository layout
 
 ```text
 src/
-  screens/                 TV screens and presentation state
-  components/              Reusable focusable UI
-  services/                TypeScript/native boundary
-  hooks/                   Screen-facing state orchestration
-  types/                   Public application types and future API shape
+  screens/                 Host, app, and streaming screens
+  components/              Focusable Fire TV UI components
+  services/                Typed TurboModule and W3C Media integration
+  hooks/                   Server and gamepad event handling
+  types/                   Shared application types
 native/moonlight/
-  MoonlightVegaCore/       C++ TurboModule and minimal GameStream transport
-  adapters/
-    VideoAdapter/          Reserved native video boundary
-    AudioAdapter/          Reserved native audio boundary
-    InputAdapter/          Reserved native input boundary
+  MoonlightVegaCore/       C++ TurboModule and GameStream implementation
+  adapters/                Platform-boundary documentation
 third_party/
-  moonlight-common-c/      GameStream streaming protocol submodule
-  mbedtls/                 Target-compatible crypto/TLS submodule
-  libgamestream/           Evaluation notes; not compiled yet
-docs/                      Architecture and roadmap
+  moonlight-common-c/      Streaming and input protocol implementation
+  mbedtls/                 TLS and pairing cryptography
+  libgamestream/           Reference/evaluation checkout
+docs/                      Architecture and milestone status
 ```
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for layer responsibilities and
-[docs/MILESTONES.md](docs/MILESTONES.md) for the implementation sequence.
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the runtime data flow.
 
-## Prerequisites
+## Requirements
 
-- Node.js 20 or newer
-- npm
-- Amazon Vega SDK and `vega` CLI configured in the current shell
-- A Vega OS device or virtual device registered with the SDK
-- A Sunshine or Wolf host reachable from the Vega device
+- Node.js 20 or newer and npm
+- Amazon Vega SDK with the `vega` CLI configured in the shell
+- A connected Vega OS Fire TV device
+- A Sunshine or Wolf server reachable from the Fire TV
+- The GameStream ports allowed between the device and server
 
-This scaffold was inspected and tested with Vega SDK `0.24.9914`, Vega CLI
-`1.3.4`, React Native Kepler `4.x`, and a Fire TV running Vega OS `1.2`. The
-project follows the SDK's installed React Native 0.83 and basic TurboModule
-templates rather than assuming Android React Native conventions.
+This repository was built with Vega SDK `0.24.9914`, Vega CLI `1.3.4`, React
+Native Kepler `4.x`, and tested on a 32-bit Fire TV running Vega OS 1.2.
 
-## Install
+For Wolf, expose the documented GameStream ports. The main ones used by this
+client are TCP `47984`, `47989`, `48010`, and UDP `47998`, `47999`, `48000`, and
+`48010`. Host discovery uses UDP `47998`.
 
-Clone all nested native dependencies and install JavaScript packages:
+## Install and validate
 
 ```bash
 git submodule update --init --recursive
 npm install
-```
-
-The generated TurboModule JavaScript is built automatically by the application
-build. Regenerate the native specification after changing
-`native/moonlight/MoonlightVegaCore/src/turbo-modules/MoonlightVegaCore.ts`:
-
-```bash
-npm --prefix native/moonlight/MoonlightVegaCore run kepler-codegen
-```
-
-## Validate
-
-Run the fast checks:
-
-```bash
 npm run typecheck
 npm run lint
 npm test -- --runInBand
 npm run doctor
 ```
 
-To exercise the exact native HTTP client and XML parser against a reachable
-Sunshine/Wolf host from the development machine:
+The native server and discovery smoke tests can be run against a reachable
+host:
 
 ```bash
 npm run smoke:serverinfo -- 192.168.1.20
+npm run smoke:discovery
 ```
 
-An optional port can follow the host. The default is the GameStream HTTP port,
-`47989`.
+Regenerate the TurboModule bindings after changing its TypeScript specification:
+
+```bash
+npm --prefix native/moonlight/MoonlightVegaCore run kepler-codegen
+```
 
 ## Build and run
 
-Build a debug package:
+Build all configured target architectures:
 
 ```bash
 npm run build:debug
 ```
 
-The prebuild step compiles the TurboModule and all bundled native dependencies
-for each Vega architecture required by the application packager. Packages are
-written beneath `build/`; for a physical 32-bit Fire TV the package is normally:
-
-```text
-build/armv7-debug/app_armv7.vpkg
-```
-
-Install and launch it on the already-connected device:
+For a 32-bit Fire TV, install and launch the generated package with:
 
 ```bash
-vega run-app build/armv7-debug/app_armv7.vpkg \
-  com.jonathanlemes.moonlightvega.main
+vega run-app \
+  'build/private/kepler/@moonlight-vega/app/undefined/vega/armv7/Debug/@moonlight-vega/app_armv7.vpkg' \
+  com.jonathanlemes.moonlightvega.main \
+  --deviceId DEVICE_ID
 ```
 
-For a release package:
+Use `aarch64` in both path segments and filename for a 64-bit Fire TV. To build
+optimized packages:
 
 ```bash
 npm run build:release
 ```
 
-After launch, enter only the Sunshine/Wolf hostname or IP address. The app sends
-an unpaired request to `http://HOST:47989/serverinfo` and renders the basic
-GameStream fields returned by the server.
+## Using the app
 
-For UI iteration, start Metro separately with `npm start` and use the normal
-Vega SDK development workflow supported by the connected target.
+1. Start Sunshine or Wolf and ensure the Fire TV can reach it.
+2. Open Moonlight Vega. Select a discovered host, or enter its host name/IP.
+3. If the host is new, the app displays a four-digit PIN. Enter that PIN in the
+   Sunshine pairing dialog. For Wolf, open the pairing URL printed by Wolf and
+   submit the same PIN.
+4. Select an application or Wolf integration to launch it at 1080p60 H.264.
+5. Use the paired Bluetooth gamepad in the stream. Press Fire TV Back to stop
+   the stream and quit the remote application.
 
-## Native dependency notes
+Pairing material is stored in the application's private data directory. A
+normal app restart keeps it; uninstalling/reinstalling the debug package may
+require pairing again.
 
-The inspected Vega target sysroot does not provide a linkable target OpenSSL
-package. `moonlight-common-c` is therefore configured with bundled Mbed TLS
-`3.6.7`, while dependency programs, tests, and shared libraries are disabled.
+## TypeScript-facing native API
 
-Moonlight Embedded's `libgamestream` was evaluated but is not built in this
-milestone because its legacy desktop-oriented dependency set includes Avahi,
-libcurl, Expat, libuuid, and OpenSSL. Pairing and application-list work should
-either port the useful protocol pieces behind the native service boundary or
-replace the minimal transport without leaking those details into the UI.
+```ts
+discoverHosts(): Promise<ServerInfo[]>;
+getServerInfo(host: string): Promise<ServerInfo>;
+pair(host: string, pin: string): Promise<void>;
+getApps(host: string): Promise<MoonlightApp[]>;
+startStream(host: string, appId: number, config: StreamConfig): Promise<void>;
+stopStream(host: string, quitApp: boolean): Promise<void>;
+sendControllerState(/* Xbox-compatible controller state */): void;
+```
 
-`moonlight-common-c` is licensed under GPL-3.0. Mbed TLS is available under its
-documented Apache-2.0 or GPL-2.0-or-later choice. Review all applicable licenses
-before distributing application packages.
+## Current limitations
 
+- H.264 is the only enabled video codec. HEVC and AV1 require additional
+  fragmented-MP4 sample entry and capability work.
+- The preset is fixed at 1920x1080, 60 fps, and 20 Mbps.
+- One controller is exposed to the server; hot-plug state, rumble, motion,
+  touchpad, and controller-specific remapping are not implemented.
+- The app assumes the Bluetooth controller has already been paired in Fire TV
+  settings.
+- The stream UI provides a minimal status overlay rather than production
+  quality settings, statistics, and recovery controls.
+
+`moonlight-common-c` is GPL-3.0 licensed. Mbed TLS is available under its
+documented Apache-2.0 or GPL-2.0-or-later choice. Review all dependency licenses
+before distributing packages.

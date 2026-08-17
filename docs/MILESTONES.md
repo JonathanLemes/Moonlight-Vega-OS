@@ -2,41 +2,49 @@
 
 ## 1. Native bridge and server information
 
-Status: implemented.
+Status: complete.
 
-- Build and launch the Vega React Native application.
-- Call native C++ from TypeScript through a generated TurboModule.
-- Build and link `moonlight-common-c` and its native dependencies.
-- Reach a Sunshine/Wolf host through the GameStream HTTP port.
-- Retrieve and display basic `/serverinfo` fields.
+- Vega React Native application and generated C++ TurboModule
+- `moonlight-common-c`, Mbed TLS, ENet, and nanors target builds
+- Sunshine/Wolf discovery and `/serverinfo`
 
 ## 2. Host management and pairing
 
-- Add persisted manual hosts and reachability refresh.
-- Add mDNS host discovery suitable for Vega OS.
-- Generate and persist a client certificate and key securely.
-- Implement the Sunshine PIN pairing exchange over HTTPS.
-- Model paired, offline, incompatible, and certificate-error states.
+Status: complete for the first usable client.
+
+- LAN discovery and manual host entry
+- Modern PIN/certificate pairing
+- Persistent client identity and pinned server certificate
+- Paired/offline/error UI states
+
+Persisted named host management and richer certificate recovery remain future
+polish.
 
 ## 3. Applications and session control
 
-- Retrieve and cache the application list.
-- Launch and quit applications.
-- Negotiate a 1080p60 session configuration.
-- Add explicit native session state and cancellation.
+Status: complete for 1080p60 H.264.
 
-## 4. Native media and input
+- Authenticated application/integration list
+- Launch, resume, disconnect, and quit
+- Explicit native session ownership
 
-- Implement hardware-backed H.264 decoding first.
-- Add HEVC and AV1 after device capability detection.
-- Decode Opus and implement low-latency audio output.
-- Map Fire TV remote and Bluetooth gamepads in native code.
-- Keep packet, frame, audio, and input paths off the JavaScript bridge.
+## 4. Media and input
 
-## 5. Quality and 4K60 investigation
+Status: usable baseline complete.
 
-- Add network resilience, telemetry, and end-to-end latency measurement.
-- Exercise suspend/resume, controller reconnect, and stream recovery.
-- Validate thermal and memory behavior on supported Fire TV devices.
-- Qualify 4K60 only on devices with adequate decode and presentation support.
+- H.264 hardware playback through Vega W3C Media
+- Opus playback through Vega W3C Media
+- Fire TV remote UI navigation and Back-to-stop behavior
+- Single Bluetooth gamepad forwarded as an Xbox-compatible controller
 
+HEVC, AV1, rumble, controller hot-plug polish, and multiple controllers remain.
+
+## 5. Quality and 4K60
+
+Status: planned.
+
+- Network recovery and session reconnection UX
+- Latency and frame-drop telemetry
+- Suspend/resume and controller reconnect testing
+- Settings for resolution, bitrate, codec, and frame rate
+- Device-specific HEVC/AV1 and 4K60 qualification
