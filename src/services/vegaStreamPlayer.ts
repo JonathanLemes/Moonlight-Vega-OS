@@ -1,4 +1,5 @@
 import {
+  AudioPlayer,
   MediaSource,
   type SourceBuffer,
   VideoPlayer,
@@ -59,16 +60,27 @@ class AppendQueue {
   }
 }
 
+// Vega's shared W3C Media pipeline takes its video renderer down whenever an
+// Opus audio SourceBuffer is added alongside a video one on the same
+// MediaSource/player: both start failing together the instant playback
+// starts (see docs/2026-08-17 history). Giving audio its own AudioPlayer +
+// MediaSource keeps it on an entirely separate native pipeline, so a problem
+// on one track can't take the other down with it.
 export class VegaStreamPlayer {
   readonly player = new VideoPlayer();
+  readonly audioPlayer = new AudioPlayer();
 
   private mediaSource = new MediaSource();
+  private audioMediaSource = new MediaSource();
   private sourceOpen = false;
-  private pendingEvents: Array<{event: string; data: ArrayBuffer}> = [];
+  private audioSourceOpen = false;
+  private pendingVideoEvents: Array<{event: string; data: ArrayBuffer}> = [];
+  private pendingAudioEvents: Array<{event: string; data: ArrayBuffer}> = [];
   private videoQueue: AppendQueue | null = null;
   private audioQueue: AppendQueue | null = null;
   private surfaceReady = false;
   private playRequested = false;
+  private audioPlayRequested = false;
   private onStatus: (status: string, isError: boolean) => void;
 
   constructor(onStatus: (status: string, isError: boolean) => void) {
@@ -76,10 +88,10 @@ export class VegaStreamPlayer {
   }
 
   async initialize(): Promise<void> {
-    await this.player.initialize();
+    await Promise.all([this.player.initialize(), this.audioPlayer.initialize()]);
+
     this.player.addEventListener('error', () => {
       this.videoQueue?.fail();
-      this.audioQueue?.fail();
       const mediaError = this.player.error;
       this.onStatus(
         `Vega playback error ${mediaError?.code ?? 'unknown'}: ${
@@ -88,15 +100,39 @@ export class VegaStreamPlayer {
         true,
       );
     });
+    this.audioPlayer.addEventListener('error', () => {
+      this.audioQueue?.fail();
+      const mediaError = this.audioPlayer.error;
+      // Audio is a bonus on top of the video stream, not the main event:
+      // don't flag it as a hard error that keeps the overlay from fading.
+      this.onStatus(
+        `Vega audio error ${mediaError?.code ?? 'unknown'}: ${
+          mediaError?.message || 'unsupported or invalid audio'
+        }`,
+        false,
+      );
+    });
+
     this.mediaSource.onsourceopen = () => {
       this.sourceOpen = true;
       this.mediaSource.duration = Number.POSITIVE_INFINITY;
-      const events = this.pendingEvents.splice(0);
+      const events = this.pendingVideoEvents.splice(0);
       for (const item of events) {
-        this.handleNativeEvent(item.event, item.data);
+        this.routeVideoEvent(item.event, item.data);
       }
     };
+    this.audioMediaSource.onsourceopen = () => {
+      this.audioSourceOpen = true;
+      this.audioMediaSource.duration = Number.POSITIVE_INFINITY;
+      const events = this.pendingAudioEvents.splice(0);
+      for (const item of events) {
+        this.routeAudioEvent(item.event, item.data);
+      }
+    };
+
     this.player.src = URL.createObjectURL(this.mediaSource);
+    this.audioPlayer.src = URL.createObjectURL(this.audioMediaSource);
+
     moonlightService.setStreamEventHandler((event, data) => {
       this.handleNativeEvent(event, data);
     });
@@ -115,7 +151,11 @@ export class VegaStreamPlayer {
 
   async deinitialize(): Promise<void> {
     this.player.pause();
-    await this.player.deinitialize();
+    this.audioPlayer.pause();
+    await Promise.all([
+      this.player.deinitialize(),
+      this.audioPlayer.deinitialize(),
+    ]);
   }
 
   private handleNativeEvent(event: string, data: ArrayBuffer): void {
@@ -130,10 +170,23 @@ export class VegaStreamPlayer {
     if (event.startsWith('log:')) {
       return;
     }
-    if (!this.sourceOpen) {
-      this.pendingEvents.push({event, data});
-      return;
+    const isAudio = event.startsWith('audio-init:') || event === 'audio';
+    if (isAudio) {
+      if (!this.audioSourceOpen) {
+        this.pendingAudioEvents.push({event, data});
+        return;
+      }
+      this.routeAudioEvent(event, data);
+    } else {
+      if (!this.sourceOpen) {
+        this.pendingVideoEvents.push({event, data});
+        return;
+      }
+      this.routeVideoEvent(event, data);
     }
+  }
+
+  private routeVideoEvent(event: string, data: ArrayBuffer): void {
     try {
       if (event.startsWith('video-init:')) {
         this.videoQueue = new AppendQueue(
@@ -145,23 +198,37 @@ export class VegaStreamPlayer {
         this.maybePlay();
       } else if (event === 'video') {
         this.videoQueue?.push(data);
-      } else if (event.startsWith('audio-init:')) {
-        // Vega's Media Source implementation does not accept Opus in ISO
-        // BMFF: adding this as a second SourceBuffer alongside video does
-        // not just fail silently, it takes the shared native pipeline's
-        // video renderer down with it (both audio writes and video render
-        // start failing together the instant playback starts). Audio stays
-        // dropped until it's packaged as WebM instead.
-        this.audioQueue = null;
+      }
+    } catch (reason) {
+      this.onStatus(
+        `Vega video pipeline error: ${
+          reason instanceof Error ? reason.message : String(reason)
+        }`,
+        true,
+      );
+    }
+  }
+
+  private routeAudioEvent(event: string, data: ArrayBuffer): void {
+    try {
+      if (event.startsWith('audio-init:')) {
+        this.audioQueue = new AppendQueue(
+          this.audioMediaSource.addSourceBuffer(event.slice(11)),
+          message => this.onStatus(`Audio buffer error: ${message}`, false),
+        );
+        this.audioQueue.push(data);
+        this.audioPlayRequested = true;
+        this.maybePlayAudio();
       } else if (event === 'audio') {
         this.audioQueue?.push(data);
       }
     } catch (reason) {
+      // Audio pipeline problems stay non-fatal: video keeps playing either way.
       this.onStatus(
-        `Vega media pipeline error: ${
+        `Vega audio pipeline error: ${
           reason instanceof Error ? reason.message : String(reason)
         }`,
-        true,
+        false,
       );
     }
   }
@@ -179,5 +246,20 @@ export class VegaStreamPlayer {
       );
     });
     this.playRequested = false;
+  }
+
+  private maybePlayAudio(): void {
+    if (!this.audioPlayRequested) {
+      return;
+    }
+    this.audioPlayer.play().catch(reason => {
+      this.onStatus(
+        `Audio playback failed: ${
+          reason instanceof Error ? reason.message : String(reason)
+        }`,
+        false,
+      );
+    });
+    this.audioPlayRequested = false;
   }
 }
